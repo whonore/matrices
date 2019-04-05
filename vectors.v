@@ -20,6 +20,8 @@ Require Export Eqdep_dec.
 (* required for vcons *)
 Require Export Peano_dec.
 Require Export Omega.
+Require Export RelationClasses.
+Require Export Morphisms.
  
 Axiom proof_irr : forall (A : Prop) (p q : A), p = q.
  
@@ -187,17 +189,112 @@ rewrite Heq''.
 apply Hvcons.
 apply HR.
 Qed.
+
+Lemma induc4 :
+ forall P : forall n : nat, vect n -> vect n -> vect n -> vect n -> Prop,
+ P 0 vnil vnil vnil vnil ->
+ (forall (n : nat) (v v' v'' v''' : vect n),
+  P n v v' v'' v''' ->
+  forall a b c d : A, P (S n) (vcons n a v) (vcons n b v') (vcons n c v'') (vcons n d v''')) ->
+ forall (n : nat) (v v' v'' v''' : vect n), P n v v' v'' v'''.
+intros P Hvnil Hvcons n.
+elim n.
+intros v v' v'' v'''.
+replace v with vnil; [ idtac | rewrite uniq; auto ].
+replace v' with vnil; [ idtac | rewrite uniq; auto ].
+replace v'' with vnil; [ idtac | rewrite uniq; auto ].
+replace v''' with vnil; [ idtac | rewrite uniq; auto ].
+exact Hvnil.
+intros n0 HR v v' v'' v'''.
+elim (decompose n0 v).
+intros ve Hve; elim Hve; intros xe Heq.
+rewrite Heq.
+elim (decompose n0 v').
+intros ve' Hve'; elim Hve'; intros xe' Heq'.
+rewrite Heq'.
+elim (decompose n0 v'').
+intros ve'' Hve''; elim Hve''; intros xe'' Heq''.
+rewrite Heq''.
+elim (decompose n0 v''').
+intros ve''' Hve'''; elim Hve'''; intros xe''' Heq'''.
+rewrite Heq'''.
+apply Hvcons.
+apply HR.
+Qed.
 (* some basic operations on vectors *)
- 
+
+Variable Aeq : A -> A -> Prop.
+Context `{Aequiv: Equivalence A Aeq}.
+
+Definition eq_add_S_tr (n m : nat) (H : S n = S m) : n = m := f_equal pred H.
+
+Fixpoint eqvect {n : nat} (v : vect n) {struct v} :
+ vect n -> Prop :=
+  match v in (vect k) return (vect k -> Prop) with
+  | vnil =>
+      fun v' : vect 0 =>
+      True
+  | vcons n1 x1 v1 =>
+      fun v' : vect (S n1) =>
+      match v' in (vect k) return (k = S n1 -> Prop) with
+      | vnil => fun h => False
+      | vcons n2 x2 v2 =>
+          fun h =>
+          Aeq x1 x2 /\
+          @eqvect n2
+            (eq_rec n1 (fun n : nat => vect n) v1 n2
+               (eq_add_S_tr n1 n2 (sym_eq h))) v2
+      end (refl_equal (S n1))
+  end.
+
+Local Infix "=v" := eqvect (at level 70).
+Local Infix "=A" := Aeq (at level 70).
+
+Global Instance eqvect_refl n : Reflexive (@eqvect n).
+Proof.
+  intros v; now induction v.
+Qed.
+
+Global Instance eqvect_sym n : Symmetric (@eqvect n).
+Proof.
+  intros v w.
+  eapply (induc2 (fun n v w => v =v w -> w =v v)); cbn; auto.
+  intros n' v' w' IH x y (Heq & Heq').
+  now split; auto.
+Qed.
+
+Global Instance eqvect_trans n : Transitive (@eqvect n).
+Proof.
+  intros v w u.
+  eapply (induc3 (fun n v w u => v =v w -> w =v u -> v =v u)); cbn; auto.
+  intros n' v' w' u' IH x y z (Heq & Heq') (Heq'' & Heq''').
+  split; auto.
+  etransitivity; eauto.
+Qed.
+
+Global Instance eqvect_equiv n : Equivalence (@eqvect n).
+Proof.
+  split; typeclasses eauto.
+Qed.
+
 Definition head (n : nat) (v : vect n) :=
   match v in (vect n) return (0 < n -> A) with
   | vnil => fun h : 0 < 0 => False_rec A (lt_irrefl 0 h)
   | vcons p a v' => fun h : 0 < S p => a
   end.
+
+Instance head_prop n : Proper (eqvect ==> eq ==> Aeq) (head n).
+Proof.
+  intros v w Heq ? pf ->.
+  eapply (induc2 (fun n v w => forall pf', v =v w -> head n v pf' =A head n w pf')); auto.
+  intros; omega.
+  intros * IH *; cbn.
+  now intros (-> & ?).
+Qed.
  
 Lemma head_lemma_1 :
- forall v v' : vect 1, v = v' -> head 1 v (le_n 1) = head 1 v' (le_n 1).
-intros v v' H; rewrite H; trivial.
+ forall v v' : vect 1, v =v v' -> head 1 v (le_n 1) =A head 1 v' (le_n 1).
+intros v v' H; rewrite H; easy.
 Qed.
  
 Definition tail (n : nat) (v : vect n) :=

@@ -16,14 +16,22 @@
 
 Require Export ZArithRing.
 Require Export ZArith.
+Require Export RelationClasses.
+Require Export Morphisms.
 
 Module Type Carrier.
 Parameter A : Set.
+Parameter Aeq : A -> A -> Prop.
 Parameter Aopp : A -> A.
 Parameters (Aplus Aminus Amult: A -> A -> A).
 Parameters (A0 : A) (A1 : A).
+
+Axiom Aeq_equiv : Equivalence Aeq.
+Axiom Aplus_prop : Proper (Aeq ==> Aeq ==> Aeq) Aplus.
+Axiom Amult_prop : Proper (Aeq ==> Aeq ==> Aeq) Amult.
+Axiom Aopp_prop : Proper (Aeq ==> Aeq) Aopp.
  
-Axiom A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp (eq(A:=A)).
+Axiom A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp Aeq.
 
 End Carrier.
 
@@ -31,12 +39,18 @@ End Carrier.
 Module Zc : Carrier.
 
 Definition A := Z.
+Definition Aeq := eq (A := A).
 Definition Aopp := Zopp.
 Definition Aplus := Zplus.
 Definition Aminus := Zminus.
 Definition Amult := Zmult.
 Definition A0 := 0%Z.
 Definition A1 := 1%Z.
+
+Instance Aeq_equiv : Equivalence Aeq := ltac:(typeclasses eauto).
+Instance Aplus_prop : Proper (Aeq ==> Aeq ==> Aeq) Aplus := ltac:(typeclasses eauto).
+Instance Amult_prop : Proper (Aeq ==> Aeq ==> Aeq) Amult := ltac:(typeclasses eauto).
+Instance Aopp_prop : Proper (Aeq ==> Aeq) Aopp := ltac:(typeclasses eauto).
 
 Definition A_ring := InitialRing.Zth.
 

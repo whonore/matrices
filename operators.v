@@ -20,10 +20,11 @@ Require Export Matrices.vectors.
  
 Module Type TVectors.
 Parameter A : Set.
+Parameter Aeq : A -> A -> Prop.
 Parameter Aopp : A -> A.
 Parameters (Aplus Aminus Amult: A -> A -> A).
 Parameters (A0 : A) (A1 : A).
-Parameter A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp (eq(A:=A)).
+Parameter A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp Aeq.
 
 Parameter mkvect : forall (x : A) (n : nat), vect A n.
 Parameter addvect : forall n : nat, vect A n -> vect A n -> vect A n.
@@ -33,59 +34,63 @@ Parameter multscal : forall (a : A) (n : nat), vect A n -> vect A n.
 
 Parameter mkrowI : forall n i : nat, 0 <= i -> i <= n -> vect A n.
 
+Arguments eqvect {A Aeq n}.
+Local Infix "=v" := (eqvect (Aeq := Aeq)) (at level 70).
+Local Infix "=A" := Aeq (at level 70).
+
 Axiom
   addvect_sym :
-    forall (n : nat) (w w' : vect A n), addvect n w w' = addvect n w' w.
+    forall (n : nat) (w w' : vect A n), addvect n w w' =v addvect n w' w.
 
 Axiom
   addvect_assoc :
     forall (n : nat) (v w x : vect A n),
-    addvect n v (addvect n w x) = addvect n (addvect n v w) x.
+    addvect n v (addvect n w x) =v addvect n (addvect n v w) x.
 
 Axiom
   addvect_zero_l :
-    forall (n : nat) (w : vect A n), addvect n (mkvect A0 n) w = w.
+    forall (n : nat) (w : vect A n), addvect n (mkvect A0 n) w =v w.
 
 Axiom
   addvect_reg :
     forall (n : nat) (v1 v2 w1 w2 : vect A n),
-    v1 = v2 -> w1 = w2 -> addvect n v1 w1 = addvect n v2 w2.
+    v1 =v v2 -> w1 =v w2 -> addvect n v1 w1 =v addvect n v2 w2.
 
 Axiom
   addvect_oppvect :
-    forall (n : nat) (a : vect A n), addvect n a (oppvect n a) = mkvect A0 n.
+    forall (n : nat) (a : vect A n), addvect n a (oppvect n a) =v mkvect A0 n.
 
 Axiom
   scalprod_reg :
     forall (n : nat) (v w v' w' : vect A n),
-    v = v' -> w = w' -> scalprod n v w = scalprod n v' w'.
+    v =v v' -> w =v w' -> scalprod n v w =A scalprod n v' w'.
 Axiom
   scalprod_sym :
-    forall (n : nat) (v w : vect A n), scalprod n v w = scalprod n w v.
+    forall (n : nat) (v w : vect A n), scalprod n v w =A scalprod n w v.
 Axiom
   scalprod_zero_l :
-    forall (n : nat) (w : vect A n), scalprod n (mkvect A0 n) w = A0.
+    forall (n : nat) (w : vect A n), scalprod n (mkvect A0 n) w =A A0.
 
 Axiom
   scalprod_distr_l :
     forall (n : nat) (a b w : vect A n),
-    scalprod n (addvect n a b) w = Aplus (scalprod n a w) (scalprod n b w).
+    scalprod n (addvect n a b) w =A Aplus (scalprod n a w) (scalprod n b w).
 
 Axiom
   scalprod_distr_r :
     forall (n : nat) (a b w : vect A n),
-    scalprod n w (addvect n a b) = Aplus (scalprod n w a) (scalprod n w b).
+    scalprod n w (addvect n a b) =A Aplus (scalprod n w a) (scalprod n w b).
 
 Axiom
   scalprod_multscal :
     forall (a : A) (n : nat) (v w : vect A n),
-    scalprod n (multscal a n v) w = Amult a (scalprod n v w).
+    scalprod n (multscal a n v) w =A Amult a (scalprod n v w).
 
 Axiom
   mkrowI_nth :
     forall (n : nat) (w : vect A n) (i : nat) (H1 : 0 <= i) 
       (H1' : 0 < i) (H2 H2' : i <= n),
-    scalprod n (mkrowI n i H1 H2) w = nth A i n w H1' H2'.
+    scalprod n (mkrowI n i H1 H2) w =A nth A i n w H1' H2'.
 
 Axiom
   nth_multscal :
@@ -101,12 +106,14 @@ Axiom
 End TVectors.
 
 Module Vectors (C: Carrier) <: TVectors with Definition A := C.A with
+  Definition Aeq := C.Aeq with
   Definition Aopp := C.Aopp with Definition Aplus := C.Aplus with
   Definition Amult := C.Amult with Definition Aminus := C.Aminus with
   Definition A0 := C.A0 with Definition A1 := C.A1 with
   Definition A_ring := C.A_ring.
 
 Definition A := C.A.
+Definition Aeq := C.Aeq.
 Definition Aopp := C.Aopp.
 Definition Aplus := C.Aplus.
 Definition Amult := C.Amult.
@@ -116,7 +123,15 @@ Definition A1 := C.A1.
 Definition A_ring := C.A_ring.
 
 Import C.
+Instance Aeq_equiv : Equivalence Aeq := Aeq_equiv.
+Instance Aplus_prop : Proper (Aeq ==> Aeq ==> Aeq) Aplus := Aplus_prop.
+Instance Amult_prop : Proper (Aeq ==> Aeq ==> Aeq) Amult := Amult_prop.
+Instance Aopp_prop : Proper (Aeq ==> Aeq) Aopp := Aopp_prop.
 Add Ring Ar : A_ring.
+
+Arguments eqvect {A Aeq n}.
+Local Infix "=v" := (eqvect (Aeq := Aeq)) (at level 70).
+Local Infix "=A" := Aeq (at level 70).
 
 (* functions *)
 
@@ -200,90 +215,132 @@ apply o1; assumption.
 apply o2; assumption.
 Defined.
 
+Instance addvect_prop n :
+  Proper (eqvect (Aeq := Aeq) ==> eqvect (Aeq := Aeq) ==> eqvect (Aeq := Aeq)) (addvect n).
+Proof.
+  intros v w Heq v' w' Heq'.
+  eapply (induc4 A (fun n v w v' w' => v =v w -> v' =v w' -> addvect n v v' =v addvect n w w')); auto.
+  intros * IH *; cbn.
+  intros (-> & ?) (-> & ?).
+  now rewrite IH; auto.
+Qed.
+
+Instance scalprod_prop n :
+  Proper (eqvect (Aeq := Aeq) ==> eqvect (Aeq := Aeq) ==> Aeq) (scalprod n).
+Proof.
+  intros v w Heq v' w' Heq'.
+  eapply (induc4 A (fun n v w v' w' => v =v w -> v' =v w' -> scalprod n v v' =A scalprod n w w')); auto.
+  now cbn.
+  intros * IH *; cbn.
+  intros (-> & ?) (-> & ?).
+  now rewrite IH; auto.
+Qed.
+
+Instance oppvect_prop n : Proper (eqvect (Aeq := Aeq) ==> eqvect (Aeq := Aeq)) (oppvect n).
+Proof.
+  intros v w Heq.
+  eapply (induc2 A (fun n v w => v =v w -> oppvect n v =v oppvect n w)); auto.
+  intros * IH *; cbn.
+  intros (-> & ?).
+  now rewrite IH; auto.
+Qed.
+
+Local Notation multscal' n := (fun a v => multscal a n v).
+Instance multscal_prop n : Proper (Aeq ==> eqvect (Aeq := Aeq) ==> eqvect (Aeq := Aeq)) (multscal' n).
+Proof.
+  intros x y Heq v w Heq'.
+  eapply (induc2 A (fun n v w => v =v w -> multscal x n v =v multscal y n w)); auto.
+  intros * IH *; cbn.
+  intros (-> & ?).
+  rewrite IH; auto.
+  split; try easy.
+  now rewrite Heq.
+Qed.
+
 (* lemmas *)
 
 Lemma addvect_sym :
- forall (n : nat) (w w' : vect A n), addvect n w w' = addvect n w' w.
+ forall (n : nat) (w w' : vect A n), addvect n w w' =v addvect n w' w.
 intros n w w'.
 eapply
  (induc2 A
-    (fun (n : nat) (w w' : vect A n) => addvect n w w' = addvect n w' w))
+    (fun (n : nat) (w w' : vect A n) => addvect n w w' =v addvect n w' w))
  .
 simpl in |- *; trivial.
 intros n0 v v' HR a b.
 simpl in |- *.
-cut (Aplus a b = Aplus b a); [ intros Hcut; rewrite Hcut | ring ].
+cut (Aplus a b =A Aplus b a); [ intros Hcut; rewrite Hcut | ring ].
 rewrite HR.
-trivial.
+easy.
 Qed.
 
 Lemma addvect_assoc :
  forall (n : nat) (v w x : vect A n),
- addvect n v (addvect n w x) = addvect n (addvect n v w) x.
+ addvect n v (addvect n w x) =v addvect n (addvect n v w) x.
 intros n v w x.
 eapply
  (induc3 A
     (fun (n : nat) (v w x : vect A n) =>
-     addvect n v (addvect n w x) = addvect n (addvect n v w) x))
+     addvect n v (addvect n w x) =v addvect n (addvect n v w) x))
  .
 simpl in |- *; trivial.
 intros n0 v0 w0 x0 HR a b c.
 simpl in |- *.
 rewrite HR.
-cut (Aplus a (Aplus b c) = Aplus (Aplus a b) c).
+cut (Aplus a (Aplus b c) =A Aplus (Aplus a b) c).
 intros Hrew; rewrite Hrew.
-trivial.
+easy.
 ring.
 Qed.
 
 Lemma addvect_zero_l :
- forall (n : nat) (w : vect A n), addvect n (mkvect A0 n) w = w.
+ forall (n : nat) (w : vect A n), addvect n (mkvect A0 n) w =v w.
 intros n w.
 eapply
- (induc1 A (fun (n : nat) (w : vect A n) => addvect n (mkvect A0 n) w = w))
+ (induc1 A (fun (n : nat) (w : vect A n) => addvect n (mkvect A0 n) w =v w))
  .
 simpl in |- *; trivial.
 intros n0 v0 HR a.
 simpl in |- *.
-cut (Aplus A0 a = a); [ intros Hrew; rewrite Hrew | ring ].
+cut (Aplus A0 a =A a); [ intros Hrew; rewrite Hrew | ring ].
 rewrite HR.
-trivial.
+easy.
 Qed.
 
 Lemma addvect_reg :
  forall (n : nat) (v1 v2 w1 w2 : vect A n),
- v1 = v2 -> w1 = w2 -> addvect n v1 w1 = addvect n v2 w2.
-intros n v1 v2 w1 w2 h1 h2; rewrite h1; rewrite h2; trivial.
+ v1 =v v2 -> w1 =v w2 -> addvect n v1 w1 =v addvect n v2 w2.
+intros n v1 v2 w1 w2 h1 h2; rewrite h1; rewrite h2; easy.
 Qed.
 
 Lemma addvect_oppvect :
- forall (n : nat) (a : vect A n), addvect n a (oppvect n a) = mkvect A0 n.
+ forall (n : nat) (a : vect A n), addvect n a (oppvect n a) =v mkvect A0 n.
 intros n a.
 eapply
  (induc1 A
-    (fun (n : nat) (a : vect A n) => addvect n a (oppvect n a) = mkvect A0 n))
+    (fun (n : nat) (a : vect A n) => addvect n a (oppvect n a) =v mkvect A0 n))
  .
 simpl in |- *; trivial.
 intros n0 v HR a0; simpl in |- *.
 rewrite HR.
-cut (Aplus a0 (Aopp a0) = A0); [ intros Hcut; rewrite Hcut | ring ].
-trivial.
+cut (Aplus a0 (Aopp a0) =A A0); [ intros Hcut; rewrite Hcut | ring ].
+easy.
 Qed.
 
 Lemma scalprod_reg :
  forall (n : nat) (v w v' w' : vect A n),
- v = v' -> w = w' -> scalprod n v w = scalprod n v' w'.
-intros n v w v' w' h1 h2; rewrite h1; rewrite h2; trivial.
+ v =v v' -> w =v w' -> scalprod n v w =A scalprod n v' w'.
+intros n v w v' w' h1 h2; rewrite h1; rewrite h2; easy.
 Qed.
  
 Lemma scalprod_sym :
- forall (n : nat) (v w : vect A n), scalprod n v w = scalprod n w v.
+ forall (n : nat) (v w : vect A n), scalprod n v w =A scalprod n w v.
 intros n v w.
 eapply
  (induc2 A
-    (fun (n : nat) (v w : vect A n) => scalprod n v w = scalprod n w v))
+    (fun (n : nat) (v w : vect A n) => scalprod n v w =A scalprod n w v))
  .
-simpl in |- *; trivial.
+simpl in |- *; try easy.
 intros n0 v0 v' H a b; try assumption.
 simpl in |- *.
 rewrite H.
@@ -291,25 +348,25 @@ ring.
 Qed.
 
 Lemma scalprod_zero_l :
- forall (n : nat) (w : vect A n), scalprod n (mkvect A0 n) w = A0.
+ forall (n : nat) (w : vect A n), scalprod n (mkvect A0 n) w =A A0.
 intros n w.
 eapply
- (induc1 A (fun (n : nat) (w : vect A n) => scalprod n (mkvect A0 n) w = A0))
+ (induc1 A (fun (n : nat) (w : vect A n) => scalprod n (mkvect A0 n) w =A A0))
  .
-simpl in |- *; trivial.
+simpl in |- *; try easy.
 intros n0 w0 HR.
-simpl in |- *; rewrite HR.
+simpl in |- *; setoid_rewrite HR.
 intros; ring.
 Qed.
 
 Lemma scalprod_distr_l :
  forall (n : nat) (a b w : vect A n),
- scalprod n (addvect n a b) w = Aplus (scalprod n a w) (scalprod n b w).
+ scalprod n (addvect n a b) w =A Aplus (scalprod n a w) (scalprod n b w).
 intros n a b w.
 eapply
  (induc3 A
     (fun (n : nat) (a b w : vect A n) =>
-     scalprod n (addvect n a b) w = Aplus (scalprod n a w) (scalprod n b w)))
+     scalprod n (addvect n a b) w =A Aplus (scalprod n a w) (scalprod n b w)))
  .
 simpl in |- *; ring.
 intros n0 v v' v'' HR a0 b0 c; try assumption.
@@ -320,12 +377,12 @@ Qed.
 
 Lemma scalprod_distr_r :
  forall (n : nat) (a b w : vect A n),
- scalprod n w (addvect n a b) = Aplus (scalprod n w a) (scalprod n w b).
+ scalprod n w (addvect n a b) =A Aplus (scalprod n w a) (scalprod n w b).
 intros n a b w.
 eapply
  (induc3 A
     (fun (n : nat) (a b w : vect A n) =>
-     scalprod n w (addvect n a b) = Aplus (scalprod n w a) (scalprod n w b)))
+     scalprod n w (addvect n a b) =A Aplus (scalprod n w a) (scalprod n w b)))
  .
 symmetry  in |- *; simpl in |- *; ring.
 intros n0 v v' v'' H a0 b0 c; try assumption.
@@ -336,14 +393,14 @@ Qed.
  
 Lemma scalprod_multscal :
  forall (a : A) (n : nat) (v w : vect A n),
- scalprod n (multscal a n v) w = Amult a (scalprod n v w).
+ scalprod n (multscal a n v) w =A Amult a (scalprod n v w).
 intros a n v w.
 eapply
  (induc2 A
     (fun (n : nat) (v w : vect A n) =>
-     scalprod n (multscal a n v) w = Amult a (scalprod n v w)))
+     scalprod n (multscal a n v) w =A Amult a (scalprod n v w)))
  .
-simpl in |- *; trivial.
+simpl in |- *; try easy.
 ring.
 intros n0 v0 v' H a0 b; try assumption.
 simpl in |- *.
@@ -360,7 +417,7 @@ intros; rewrite HR.
 trivial.
 Qed.
  
-Lemma ring_thm2 : forall x y : A, Aplus (Amult A0 x) y = y.
+Lemma ring_thm2 : forall x y : A, Aplus (Amult A0 x) y =A y.
 intros; ring.
 Qed.
  
@@ -376,7 +433,7 @@ Qed.
 Lemma mkrowI_nth :
  forall (n : nat) (w : vect A n) (i : nat) (H1 : 0 <= i) 
    (H1' : 0 < i) (H2 H2' : i <= n),
- scalprod n (mkrowI n i H1 H2) w = nth A i n w H1' H2'.
+ scalprod n (mkrowI n i H1 H2) w =A nth A i n w H1' H2'.
 intros n w; elim w.
 intros i; case i.
 intros H1 H1'; inversion H1'.
@@ -402,7 +459,7 @@ rewrite
     (le_Sn_le_n_pred (S x) (S n0) H2')).
 simpl in |- *.
 rewrite ring_thm2.
-trivial.
+easy.
 Qed.
 
 Lemma head_multscal :

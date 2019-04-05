@@ -19,10 +19,11 @@ Require Export Matrices.operators.
 Module Type TMatrices.
 
 Parameter A : Set.
+Parameter Aeq : A -> A -> Prop.
 Parameter Aopp : A -> A.
 Parameters (Aplus Amult Aminus : A -> A -> A).
 Parameters (A0 : A) (A1 : A).
-Parameter A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp (eq(A:=A)).
+Parameter A_ring : ring_theory A0 A1 Aplus Amult Aminus Aopp Aeq.
 
 Parameter Lmatrix : nat -> nat -> Set.
 Parameter
@@ -33,56 +34,63 @@ Parameter oppmatrix : forall n m : nat, Lmatrix n m -> Lmatrix n m.
 Parameter o : forall n m : nat, Lmatrix n m.
 Parameter I : forall n : nat, Lmatrix n n.
 
+Parameter eqmat : forall n m : nat, Lmatrix n m -> Lmatrix n m -> Prop.
+Axiom eqmat_equiv : forall n m, Equivalence (eqmat n m).
+Arguments eqmat {n m}.
+Local Infix "=m" := eqmat (at level 70).
+
 Axiom
   addmatrix_sym :
     forall (n m : nat) (w w' : Lmatrix n m),
-    addmatrix n m w w' = addmatrix n m w' w.
+    addmatrix n m w w' =m addmatrix n m w' w.
 
 Axiom
   addmatrix_assoc :
     forall (n m : nat) (w w' w'' : Lmatrix n m),
-    addmatrix n m (addmatrix n m w w') w'' =
+    addmatrix n m (addmatrix n m w w') w'' =m
     addmatrix n m w (addmatrix n m w' w'').
 
 Axiom
   addmatrix_oppmatrix :
     forall (n m : nat) (w : Lmatrix n m),
-    addmatrix n m w (oppmatrix n m w) = o n m.
+    addmatrix n m w (oppmatrix n m w) =m o n m.
 
 Axiom
   addmatrix_zero_l :
-    forall (n m : nat) (w : Lmatrix n m), addmatrix n m (o n m) w = w.
+    forall (n m : nat) (w : Lmatrix n m), addmatrix n m (o n m) w =m w.
 
-Axiom I_mat : forall (m n : nat) (w : Lmatrix n m), prodmat m m n (I m) w = w.
-Axiom mat_I : forall (m n : nat) (w : Lmatrix n m), prodmat m n n w (I n) = w.
+Axiom I_mat : forall (m n : nat) (w : Lmatrix n m), prodmat m m n (I m) w =m w.
+Axiom mat_I : forall (m n : nat) (w : Lmatrix n m), prodmat m n n w (I n) =m w.
 
 Axiom
   prodmat_distr_l :
     forall (n m p : nat) (a b : Lmatrix m n) (w : Lmatrix p m),
-    prodmat n m p (addmatrix m n a b) w =
+    prodmat n m p (addmatrix m n a b) w =m
     addmatrix p n (prodmat n m p a w) (prodmat n m p b w).
 
 Axiom
   prodmat_distr_r :
     forall (n m p : nat) (a b : Lmatrix p m) (w : Lmatrix m n),
-    prodmat n m p w (addmatrix p m a b) =
+    prodmat n m p w (addmatrix p m a b) =m
     addmatrix p n (prodmat n m p w a) (prodmat n m p w b).
 
 Axiom
   prodmat_assoc :
     forall (n m p q : nat) (a : Lmatrix m n) (b : Lmatrix p m)
       (c : Lmatrix q p),
-    prodmat n p q (prodmat n m p a b) c = prodmat n m q a (prodmat m p q b c).
+    prodmat n p q (prodmat n m p a b) c =m prodmat n m q a (prodmat m p q b c).
 
 End TMatrices.
 
 Module Matrices (C: Carrier) <: TMatrices with Definition A := C.A with
+  Definition Aeq := C.Aeq with
   Definition Aopp := C.Aopp with Definition Aplus := C.Aplus with
   Definition Amult := C.Amult with Definition Aminus := C.Aminus with
   Definition A0 := C.A0 with Definition A1 := C.A1 with
   Definition A_ring := C.A_ring.
 
 Definition A := C.A.
+Definition Aeq := C.Aeq.
 Definition Aopp := C.Aopp.
 Definition Aplus := C.Aplus.
 Definition Amult := C.Amult.
@@ -99,6 +107,23 @@ Import C.
 Definition Lmatrix (n m : nat) := vect (vect A n) m.
 (* defined by rows : (Lmatrix A n m) have m rows and n columns
    the aim is to show the ring structure of n,n matrix *)
+
+Definition eqmat {n m} (w w' : Lmatrix n m) :=
+  @eqvect (vect A n) (eqvect (Aeq := Aeq)) m w w'.
+
+Global Instance eqmat_equiv n m : Equivalence (@eqmat n m).
+Proof.
+  unfold eqmat; split; hnf; try now intros.
+  etransitivity; eauto.
+Qed.
+
+Local Infix "=m" := eqmat (at level 70).
+Local Infix "=v" := (eqvect (Aeq := Aeq)) (at level 70).
+Local Infix "=A" := Aeq (at level 70).
+
+Fact eq_equiv (A : Set) {Aeq} `{Equivalence A Aeq} : forall x y,
+  x = y -> Aeq x y.
+Proof. now intros; subst. Qed.
 
 Definition eq_add_S_tr (n m : nat) (H : S n = S m) : n = m := f_equal pred H.
 
@@ -265,85 +290,81 @@ Definition I : forall n : nat, Lmatrix n n.
 intros n; apply I'.
 apply le_n.
 Defined.
- 
+
 Lemma addmatrix_sym :
  forall (n m : nat) (w w' : Lmatrix n m),
- addmatrix n m w w' = addmatrix n m w' w.
+ addmatrix n m w w' =m addmatrix n m w' w.
 intros n m w w'.
 eapply
  (induc2 (vect A n)
     (fun (m : nat) (w w' : Lmatrix n m) =>
-     addmatrix n m w w' = addmatrix n m w' w)).
+     addmatrix n m w w' =m addmatrix n m w' w)).
 simpl in |- *; trivial.
 intros n0 w0 w0' HR w1 w1'.
 simpl in |- *.
-rewrite HR.
-rewrite addvect_sym.
-trivial.
+split; auto.
+apply addvect_sym.
 Qed.
 
 Lemma addmatrix_assoc :
  forall (n m : nat) (w w' w'' : Lmatrix n m),
- addmatrix n m (addmatrix n m w w') w'' =
+ addmatrix n m (addmatrix n m w w') w'' =m
  addmatrix n m w (addmatrix n m w' w'').
 intros n m w w' w''.
 eapply
  (induc3 (vect A n)
     (fun (m : nat) (w w' w'' : Lmatrix n m) =>
-     addmatrix n m (addmatrix n m w w') w'' =
+     addmatrix n m (addmatrix n m w w') w'' =m
      addmatrix n m w (addmatrix n m w' w''))).
 simpl in |- *; trivial.
 intros n0 v v' v'' HR a b c; simpl in |- *.
-rewrite HR.
+split; auto.
 rewrite addvect_assoc.
-trivial.
+easy.
 Qed.
 
 Lemma addmatrix_oppmatrix :
  forall (n m : nat) (w : Lmatrix n m),
- addmatrix n m w (oppmatrix n m w) = o n m.
+ addmatrix n m w (oppmatrix n m w) =m o n m.
 intros n m w.
 eapply
  (induc1 (vect A n)
     (fun (m : nat) (w : Lmatrix n m) =>
-     addmatrix n m w (oppmatrix n m w) = o n m)).
+     addmatrix n m w (oppmatrix n m w) =m o n m)).
 simpl in |- *; trivial.
 intros n0 v HR a.
 simpl in |- *.
-rewrite HR.
-rewrite addvect_oppvect.
-trivial.
+split; auto.
+apply addvect_oppvect.
 Qed.
 
 Lemma addmatrix_zero_l :
- forall (n m : nat) (w : Lmatrix n m), addmatrix n m (o n m) w = w.
+ forall (n m : nat) (w : Lmatrix n m), addmatrix n m (o n m) w =m w.
 intros n m w.
 eapply
  (induc1 (vect A n)
-    (fun (m : nat) (w : Lmatrix n m) => addmatrix n m (o n m) w = w))
+    (fun (m : nat) (w : Lmatrix n m) => addmatrix n m (o n m) w =m w))
  .
 simpl in |- *; trivial.
 intros n0 v0 HR a; simpl in |- *.
-rewrite HR.
-rewrite addvect_zero_l.
-trivial.
+split; auto.
+apply addvect_zero_l.
 Qed.
 
 Lemma mkvectA0_prodvectmatrix :
  forall (n m c : nat) (w : Lmatrix m n) (H1 : 0 <= c) (H2 : c <= m),
- prodvectmatrix n m (mkvect A0 n) w c H1 H2 = mkvect A0 c.
+ prodvectmatrix n m (mkvect A0 n) w c H1 H2 =v mkvect A0 c.
 intros n m c; generalize n m; clear n m; elim c.
 simpl in |- *; trivial.
 intros c' HR.
 unfold mkvect in |- *; simpl in |- *.
-intros n m w H1 H2; apply vcons_lemma.
-rewrite scalprod_zero_l; trivial.
-rewrite HR; trivial.
+intros n m w H1 H2; split; try easy.
+apply scalprod_zero_l.
 Qed.
  
 Lemma mkvectA0_prodvectmat :
  forall (n m : nat) (w : Lmatrix m n),
- prodvectmat n m (mkvect A0 n) w = mkvect A0 m.
+ prodvectmat n m (mkvect A0 n) w =v mkvect A0 m.
 intros n m w; unfold prodvectmat in |- *; apply mkvectA0_prodvectmatrix.
 Qed.
  
@@ -351,7 +372,7 @@ Lemma prodvectmatrix_last :
  forall (n m i : nat) (w : Lmatrix n m) (H1 : 0 < i) 
    (H1' : 0 <= i) (H2 : i <= m) (c : nat) (Hc1 : 0 <= c) 
    (Hc2 : c <= n),
- prodvectmatrix m n (mkrowI m i H1' H2) w c Hc1 Hc2 =
+ prodvectmatrix m n (mkrowI m i H1' H2) w c Hc1 Hc2 =v
  last A n (getline n m w i H1 H2) c Hc1 Hc2.
 intros n m i w H1 H1' H2 c; elim c.
 intros Hc1 Hc2; simpl in |- *.
@@ -363,13 +384,13 @@ rewrite
  (mkrowI_nth m (getcolumn n m w (n - c') (o1 n c' Hc2') (o2 n c')) i H1' H1
     H2 H2).
 rewrite (access_sym n m w i (n - c') (o1 n c' Hc2') (o2 n c') H1 H2).
-unfold o1, o2, o3, o4 in |- *; trivial.
+unfold o1, o2, o3, o4 in |- *; easy.
 Qed.
  
 Lemma mkrowI_prodvectmat :
  forall (n m i : nat) (w : Lmatrix m n) (H1 : 0 <= i) 
    (H1' : 0 < i) (H2 : i <= n),
- prodvectmat n m (mkrowI n i H1 H2) w = getline m n w i H1' H2.
+ prodvectmat n m (mkrowI n i H1 H2) w =v getline m n w i H1' H2.
 intros n m i w H1 H1' H2; try assumption.
 rewrite <- (last_n' A m (getline m n w i H1' H2) (le_O_n m) (le_n m)).
 unfold prodvectmat in |- *.
@@ -389,7 +410,7 @@ Qed.
 
 Lemma I'_mat :
  forall (m n p : nat) (w : Lmatrix p n) (H1 : 0 <= m) (H2 : m <= n),
- prodmat m n p (I' n m H2) w = last (vect A p) n w m H1 H2.
+ prodmat m n p (I' n m H2) w =m last (vect A p) n w m H1 H2.
 intros m; elim m.
 simpl in |- *; trivial.
 intros m' HR n p w H1 H2.
@@ -416,9 +437,9 @@ generalize
  (mkrowI_prodvectmat (S n0') p (S n0' - m') (vcons (vect A p) n0' v' v0')
     (le_O_n (S n0' - m')) (last_o1 (S n0') m' H2) (last_o2 (S n0') m')).
 unfold prodvectmat in |- *.
-intros H; rewrite H; clear H.
+intros H.
 simpl in |- *.
-apply vcons_lemma.
+split.
 unfold getline in |- *; simpl in |- *; trivial.
 unfold o3' in |- *.
 apply
@@ -428,14 +449,15 @@ Qed.
  
 Lemma I'_mat' :
  forall (n p : nat) (w : Lmatrix p n) (H2 : n <= n),
- prodmat n n p (I' n n H2) w = w.
+ prodmat n n p (I' n n H2) w =m w.
 intros n p w H2; try assumption.
 transitivity (last (vect A p) n w n (le_O_n n) H2).
 apply I'_mat.
+apply eq_equiv; try typeclasses eauto.
 apply (last_n' (vect A p) n w (le_O_n n) H2).
 Qed.
  
-Lemma I_mat : forall (m n : nat) (w : Lmatrix n m), prodmat m m n (I m) w = w.
+Lemma I_mat : forall (m n : nat) (w : Lmatrix n m), prodmat m m n (I m) w =m w.
 intros m n w; try assumption.
 unfold I in |- *.
 apply I'_mat'.
@@ -446,13 +468,13 @@ Lemma getcolumn_In :
  forall (m' i m : nat) (h : m' <= m) (h1 : 0 <= i) 
    (h2 : i <= m) (h1'' : 0 <= m') (h2'' : m' <= m) 
    (h1' : 0 < i),
- getcolumn m m' (I' m m' h) i h1' h2 =
+ getcolumn m m' (I' m m' h) i h1' h2 =v
  last A m (mkrowI m i h1 h2) m' h1'' h2''.
 intros m'; elim m'.
 unfold getcolumn in |- *; simpl in |- *; trivial.
 intros n H i m h h1 h2 h1'' h2'' h1'; try assumption.
 unfold getcolumn in |- *; simpl in |- *.
-apply vcons_lemma.
+split.
 rewrite <-
  (mkrowI_nth m (mkrowI m (m - n) (le_O_n (m - n)) (o2' n m)) i h1 h1' h2)
  .
@@ -462,43 +484,42 @@ rewrite <-
 unfold scalprod in |- *.
 rewrite scalprod_sym.
 unfold o2' in |- *.
-trivial.
+easy.
 unfold getcolumn in H.
 apply H.
 Qed.
- 
+
 Lemma mat_I_last_aux :
  forall (i m : nat) (v : vect A m) (h1' : 0 <= i) (h2' : i <= m),
- prodvectmatrix m m v (I m) i h1' h2' = last A m v i h1' h2'.
+ prodvectmatrix m m v (I m) i h1' h2' =v last A m v i h1' h2'.
 intros i; elim i.
 simpl in |- *; trivial.
 intros n H m v h1' h2'; try assumption.
 simpl in |- *.
-apply vcons_lemma.
+split; try easy.
 cut (0 <= m - n); [ intros Hcuta | omega ].
 rewrite <- (mkrowI_nth m v (m - n) Hcuta (last_o1 m n h2') (last_o2 m n)).
 rewrite scalprod_sym.
 unfold scalprod in |- *.
 cut
- (getcolumn m m (I m) (m - n) (o1 m n h2') (o2 m n) =
+ (getcolumn m m (I m) (m - n) (o1 m n h2') (o2 m n) =v
   mkrowI m (m - n) Hcuta (last_o2 m n)).
-intros Hrew'; rewrite Hrew'; trivial.
+intros Hrew'; rewrite Hrew'; try easy.
 replace (mkrowI m (m - n) Hcuta (last_o2 m n)) with
  (last A m (mkrowI m (m - n) Hcuta (last_o2 m n)) m (le_O_n m) (le_n m)).
 unfold I in |- *; apply getcolumn_In.
 apply last_n'.
-unfold o3, o4 in |- *; apply H.
 Qed.
  
 Lemma mat_I_last :
  forall (i n m : nat) (a : Lmatrix m n) (h1 : 0 <= i) (h2 : i <= n),
- prodmat _ _ _ (last (vect A m) n a i h1 h2) (I m) =
+ prodmat _ _ _ (last (vect A m) n a i h1 h2) (I m) =m
  last (vect A m) n a i h1 h2.
 intros i; elim i.
 simpl in |- *; trivial.
 intros n H n0 m a h1 h2; try assumption.
 simpl in |- *.
-apply (vcons_lemma (vect A m) n).
+split.
 unfold prodvectmat in |- *.
 pattern (nth (vect A m) (n0 - n) n0 a (last_o1 n0 n h2) (last_o2 n0 n)) at 2
  in |- *;
@@ -510,7 +531,7 @@ apply last_n'.
 apply (H n0 m a (last_o3 n) (last_o4 n n0 h2)).
 Qed.
  
-Lemma mat_I : forall (m n : nat) (w : Lmatrix n m), prodmat m n n w (I n) = w.
+Lemma mat_I : forall (m n : nat) (w : Lmatrix n m), prodmat m n n w (I n) =m w.
 intros m n w; try assumption.
 replace w with (last (vect A n) m w m (le_O_n m) (le_n m)).
 apply mat_I_last.
@@ -520,23 +541,21 @@ Qed.
 Lemma prodvectmatrix_distr_l :
  forall (n m : nat) (a b : vect A n) (w : Lmatrix m n) 
    (c : nat) (H1 : 0 <= c) (H2 : c <= m),
- prodvectmatrix n m (addvect n a b) w c H1 H2 =
+ prodvectmatrix n m (addvect n a b) w c H1 H2 =v
  addvect c (prodvectmatrix n m a w c H1 H2) (prodvectmatrix n m b w c H1 H2).
 intros n m a b w c; elim c.
 intros H1 H2; simpl in |- *; trivial.
 intros n0 HR H1 H2; try assumption.
 simpl in |- *.
-apply vcons_lemma.
+split; try easy.
 unfold scalprod in |- *.
 rewrite scalprod_distr_l.
-trivial.
-rewrite HR.
-trivial.
+easy.
 Qed.
  
 Lemma prodvectmat_distr_l :
  forall (n m : nat) (a b : vect A n) (w : Lmatrix m n),
- prodvectmat n m (addvect n a b) w =
+ prodvectmat n m (addvect n a b) w =v
  addvect m (prodvectmat n m a w) (prodvectmat n m b w).
 intros n m a b w; try assumption.
 unfold prodvectmat in |- *.
@@ -545,22 +564,20 @@ Qed.
  
 Lemma prodmat_distr_l :
  forall (n m p : nat) (a b : Lmatrix m n) (w : Lmatrix p m),
- prodmat n m p (addmatrix m n a b) w =
+ prodmat n m p (addmatrix m n a b) w =m
  addmatrix p n (prodmat n m p a w) (prodmat n m p b w).
 intros n m p a b w.
 eapply
  (induc2 (vect A m)
     (fun (n0 : nat) (a0 b0 : Lmatrix m n0) =>
-     prodmat n0 m p (addmatrix m n0 a0 b0) w =
+     prodmat n0 m p (addmatrix m n0 a0 b0) w =m
      addmatrix p n0 (prodmat n0 m p a0 w) (prodmat n0 m p b0 w)))
  .
 simpl in |- *; trivial.
 intros n0 v v' HR a0 b0; try assumption.
 simpl in |- *.
-apply (vcons_lemma (vect A p) n0).
+split; try easy.
 apply prodvectmat_distr_l.
-rewrite HR.
-trivial.
 Qed.
  
 Lemma getcolumn_addvect :
@@ -587,37 +604,36 @@ Qed.
 Lemma prodvectmatrix_distr_r :
  forall (i m p : nat) (a0 : vect A m) (a b : Lmatrix p m) 
    (h1 : 0 <= i) (h2 : i <= p),
- prodvectmatrix m p a0 (addmatrix p m a b) i h1 h2 =
+ prodvectmatrix m p a0 (addmatrix p m a b) i h1 h2 =v
  addvect i (prodvectmatrix m p a0 a i h1 h2)
    (prodvectmatrix m p a0 b i h1 h2).
 intros i; elim i.
 simpl in |- *; trivial.
 intros n H m p a0 a b h1 h2; try assumption.
 simpl in |- *.
-apply vcons_lemma.
+split; try easy.
 unfold scalprod in |- *.
 rewrite <- scalprod_distr_r.
-apply scalprod_reg.
-trivial.
+apply scalprod_reg; try easy.
+apply eq_equiv; try typeclasses eauto.
 apply getcolumn_addvect.
-apply H.
 Qed.
  
 Lemma prodmat_distr_r :
  forall (n m p : nat) (a b : Lmatrix p m) (w : Lmatrix m n),
- prodmat n m p w (addmatrix p m a b) =
+ prodmat n m p w (addmatrix p m a b) =m
  addmatrix p n (prodmat n m p w a) (prodmat n m p w b).
 intros n m p a b w; try assumption.
 eapply
  (induc1 (vect A m)
     (fun (n : nat) (w : Lmatrix m n) =>
-     prodmat n m p w (addmatrix p m a b) =
+     prodmat n m p w (addmatrix p m a b) =m
      addmatrix p n (prodmat n m p w a) (prodmat n m p w b)))
  .
 simpl in |- *; trivial.
 intros n0 v H a0; try assumption.
 simpl in |- *.
-apply (vcons_lemma (vect A p) n0).
+split.
 unfold prodvectmat in |- *.
 apply prodvectmatrix_distr_r.
 apply H.
@@ -790,12 +806,12 @@ Qed.
 
 Lemma Amult_scalprod :
  forall (n : nat) (v w : vect A n) (a : A),
- Amult a (scalprod n v w) = scalprod n (multscal a n v) w.
+ Amult a (scalprod n v w) =A scalprod n (multscal a n v) w.
 intros n v w a;
  eapply
   (induc2 A
      (fun (n : nat) (v w : vect A n) =>
-      Amult a (scalprod n v w) = scalprod n (multscal a n v) w))
+      Amult a (scalprod n v w) =A scalprod n (multscal a n v) w))
   .
 simpl in |- *.
 ring.
@@ -808,65 +824,63 @@ Qed.
 Lemma prodvectmatrix_map :
  forall (i p : nat) (a0 : A) (b1 : vect A p) (c : Lmatrix 1 p) 
    (h1 : 0 <= i) (h2 : i <= 1),
- prodvectmatrix p 1 (multscal a0 p b1) c i h1 h2 =
+ prodvectmatrix p 1 (multscal a0 p b1) c i h1 h2 =v
  multscal a0 i (prodvectmatrix p 1 b1 c i h1 h2).
 intros i; elim i.
 simpl in |- *; trivial.
 intros n H p a0 b1 c h1 h2; try assumption.
 simpl in |- *.
-apply vcons_lemma.
+split; try easy.
 generalize h1 h2; clear h1 h2; case n.
 2: intros n0 h1 h2; inversion h2.
 2: inversion H1.
 intros h1 h2; try assumption.
 unfold getcolumn in |- *; simpl in |- *.
 rewrite Amult_scalprod.
-trivial.
-apply H.
+easy.
 Qed.
  
 Lemma prodvectmat_map :
  forall (p : nat) (a0 : A) (b1 : vect A p) (c : Lmatrix 1 p),
- prodvectmat p 1 (multscal a0 p b1) c = multscal a0 1 (prodvectmat p 1 b1 c).
+ prodvectmat p 1 (multscal a0 p b1) c =v multscal a0 1 (prodvectmat p 1 b1 c).
 intros p a0 b1 c; try assumption.
 unfold prodvectmat in |- *; apply prodvectmatrix_map.
 Qed.
- 
+
 Lemma prodvectmat_assoc_1 :
  forall (m p : nat) (a : vect A m) (b : Lmatrix p m) (c : Lmatrix 1 p),
- prodvectmat p 1 (prodvectmat m p a b) c =
+ prodvectmat p 1 (prodvectmat m p a b) c =v
  prodvectmat _ _ a (prodmat _ _ _ b c).
 intros m p a; elim a.
 intros b; rewrite (uniq (vect A p) b).
-intros c; simpl in |- *.
+intros c; simpl prodmat in |- *.
 unfold prodvectmat in |- *; rewrite prodvectmatrix_vnil.
 unfold prodvectmat in |- *; rewrite mkvectA0_prodvectmatrix.
 rewrite (prodvectmatrix_vnil 1 1 (le_O_n 1) (le_n 1)).
-trivial.
+easy.
 intros n a0 v H b c; try assumption.
 elim (decompose (vect A p) n b).
 intros b1 Hb1; elim Hb1; intros bs Hbs; rewrite Hbs; clear Hb1 Hbs.
-simpl in |- *.
+simpl prodmat in |- *.
 rewrite prodvectmat_vcons.
 rewrite prodvectmat_vcons.
 rewrite prodvectmat_distr_l.
 rewrite H.
-apply addvect_reg.
+apply addvect_reg; try easy.
 apply prodvectmat_map.
-trivial.
 Qed.
  
 Lemma prodvectmatrix_assoc :
  forall (v m p q : nat) (a : vect A m) (b : Lmatrix p m) 
    (c : Lmatrix q p) (h1 : 0 <= v) (h2 : v <= q),
- prodvectmatrix p q (prodvectmatrix m p a b p (le_O_n p) (le_n p)) c v h1 h2 =
+ prodvectmatrix p q (prodvectmatrix m p a b p (le_O_n p) (le_n p)) c v h1 h2 =v
  prodvectmatrix m q a (prodmat m p q b c) v h1 h2.
 intros v; elim v.
 intros m p q a b c h1 h2; try assumption.
 simpl in |- *; trivial.
 intros n HR m p q a b c h1 h2; try assumption.
 simpl in |- *.
-apply vcons_lemma.
+split.
 rewrite <- map_prodmat_getcolumn.
 rewrite <-
  (prodvectmat_scalprod' m a
@@ -876,10 +890,10 @@ rewrite <-
              (getcolumn q p c (q - n) (o1 q n h2) (o2 q n))))))
  .
 rewrite <- (prodvectmat_scalprod' p (prodvectmat m p a b)).
-apply head_lemma_1.
+apply head_lemma_1; try typeclasses eauto.
 rewrite (map_2' (vect A 1) A).
 rewrite prodvectmat_assoc_1.
-trivial.
+easy.
 intros x.
 elim (decompose _ 0 x).
 intros x1 Hx; elim Hx; intros xs Hxs; rewrite Hxs; clear Hx Hxs.
@@ -889,17 +903,17 @@ Qed.
  
 Lemma prodmat_assoc :
  forall (n m p q : nat) (a : Lmatrix m n) (b : Lmatrix p m) (c : Lmatrix q p),
- prodmat n p q (prodmat n m p a b) c = prodmat n m q a (prodmat m p q b c).
+ prodmat n p q (prodmat n m p a b) c =m prodmat n m q a (prodmat m p q b c).
 intros n m p q a b c; try assumption.
 eapply
  (induc1 (vect A m)
     (fun (n0 : nat) (a0 : Lmatrix m n0) =>
-     prodmat n0 p q (prodmat n0 m p a0 b) c =
+     prodmat n0 p q (prodmat n0 m p a0 b) c =m
      prodmat n0 m q a0 (prodmat m p q b c))).
 simpl in |- *; trivial.
 intros n0 v HR a0; try assumption.
 simpl in |- *.
-apply (vcons_lemma (vect A q) n0).
+split.
 unfold prodvectmat in |- *; apply prodvectmatrix_assoc.
 apply HR.
 Qed.
