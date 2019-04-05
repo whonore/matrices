@@ -921,6 +921,7 @@ Qed.
 End Matrices.
 
 Module matrixZ := Matrices Zc.
+Module matrixQ := Matrices Qc.
 
 
 (* 

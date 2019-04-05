@@ -16,6 +16,7 @@
 
 Require Export ZArithRing.
 Require Export ZArith.
+Require Import QArith.
 Require Export RelationClasses.
 Require Export Morphisms.
 
@@ -56,6 +57,25 @@ Definition A_ring := InitialRing.Zth.
 
 End Zc.
 
+Module Qc : Carrier.
+
+Definition A := Q.
+Definition Aeq := Qeq.
+Definition Aopp := Qopp.
+Definition Aplus := Qplus.
+Definition Aminus := Qminus.
+Definition Amult := Qmult.
+Definition A0 := 0%Q.
+Definition A1 := 1%Q.
+
+Instance Aeq_equiv : Equivalence Aeq := ltac:(typeclasses eauto).
+Instance Aplus_prop : Proper (Aeq ==> Aeq ==> Aeq) Aplus := ltac:(typeclasses eauto).
+Instance Amult_prop : Proper (Aeq ==> Aeq ==> Aeq) Amult := ltac:(typeclasses eauto).
+Instance Aopp_prop : Proper (Aeq ==> Aeq) Aopp := ltac:(typeclasses eauto).
+
+Definition A_ring := Qsrt.
+
+End Qc.
  
   (*
   Local Variables: 
